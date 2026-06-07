@@ -26,3 +26,14 @@ jobs:
       - name: Run tests
         run: |
           pytest -q
+
+      - name: Install Xvfb
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Run GUI smoke test (headless)
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a pytest -q tests/test_gui_smoke.py

@@ -255,15 +255,16 @@ class App(tk.Tk):
         if not tweets:
             messagebox.showwarning('No data', 'Run Dry-run first to fetch tweets (or use Demo).')
             return
+
         if not self.token and all(str(t.get('id','')).startswith('demo-') for t in tweets):
             if not messagebox.askyesno('Confirm', 'This will permanently mark ALL demo tweets as deleted in local archive. Continue?'):
-            return
+                return
             deleted = 0
             for t in tweets:
-            if self.db.is_deleted(t['id']):
-                continue
-            self.db.mark_deleted(t['id'])
-            deleted += 1
+                if self.db.is_deleted(t['id']):
+                    continue
+                self.db.mark_deleted(t['id'])
+                deleted += 1
             self.set_status(f'Local demo delete complete: {deleted}/{len(tweets)}')
             messagebox.showinfo('Done', f'Local demo delete complete: {deleted}/{len(tweets)}')
             return
@@ -279,20 +280,22 @@ class App(tk.Tk):
             messagebox.showerror('Error', 'Failed to load token')
             return
         api = XAPI(token)
+
         def do_delete():
             tweets = self.db.get_fetched()
             total = len(tweets)
             self.set_status(f'Deleting {total} tweets...')
             deleted = 0
             for t in tweets:
-            if self.db.is_deleted(t['id']):
-                continue
-            ok = api.delete_tweet(t['id'])
-            if ok:
-                self.db.mark_deleted(t['id'])
-                deleted += 1
+                if self.db.is_deleted(t['id']):
+                    continue
+                ok = api.delete_tweet(t['id'])
+                if ok:
+                    self.db.mark_deleted(t['id'])
+                    deleted += 1
             self.set_status(f'Delete complete: {deleted}/{total} deleted')
             messagebox.showinfo('Done', f'Delete run complete: {deleted}/{total} deleted')
+
         threading.Thread(target=do_delete, daemon=True).start()
 
     def on_resume(self):
