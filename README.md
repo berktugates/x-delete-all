@@ -1,4 +1,4 @@
-x-delete-all — Local bulk-delete tool for X (Twitter)
+# 𝕏 Delete All
 
 Overview
 --------
