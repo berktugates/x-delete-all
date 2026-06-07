@@ -9,6 +9,9 @@ python3 -m pip install --upgrade pyinstaller
 
 echo "Building standalone executable (one-file)..."
 # use the package module path as entrypoint
-pyinstaller --onefile --name x-delete-all x_delete_all/cli.py
+# include assets directory so icons and help files are bundled
+pyinstaller --onefile --name x-delete-all \
+  --add-data "assets/icon.svg:assets" \
+  x_delete_all/cli.py
 
 echo "Executable placed in ./dist/x-delete-all (or ./dist/x-delete-all.exe on Windows)"

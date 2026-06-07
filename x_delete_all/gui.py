@@ -10,6 +10,7 @@ import json
 import os
 import logging
 import subprocess
+import sys
 
 LOG_DIR = os.path.join(os.path.expanduser('~'), '.x-delete-all', 'logs')
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -31,12 +32,34 @@ class App(tk.Tk):
     def create_widgets(self):
         # Use ttk for a more modern, consistent look and improved accessibility
         style = ttk.Style(self)
+        # Choose a platform-appropriate theme when available
         try:
-            style.theme_use('clam')
+            if sys.platform == 'win32':
+                style.theme_use('vista')
+            elif sys.platform == 'darwin':
+                # macOS ships with a native aqua-like look; fallback to default
+                style.theme_use('aqua')
+            else:
+                style.theme_use('clam')
         except Exception:
-            pass
-        style.configure('Header.TLabel', font=('Segoe UI', 11, 'bold'))
-        style.configure('Info.TLabel', font=('Segoe UI', 9))
+            try:
+                style.theme_use('clam')
+            except Exception:
+                pass
+
+        # Platform-specific font choices for readability
+        if sys.platform == 'win32':
+            header_font = ('Segoe UI', 11, 'bold')
+            info_font = ('Segoe UI', 9)
+        elif sys.platform == 'darwin':
+            header_font = ('Helvetica Neue', 12, 'bold')
+            info_font = ('Helvetica Neue', 10)
+        else:
+            header_font = ('Sans', 11, 'bold')
+            info_font = ('Sans', 9)
+
+        style.configure('Header.TLabel', font=header_font)
+        style.configure('Info.TLabel', font=info_font)
         style.configure('TButton', padding=6)
 
         top = ttk.Frame(self, padding=(12,10))

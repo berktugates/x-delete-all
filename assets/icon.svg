@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect rx="20" width="128" height="128" fill="#1DA1F2" />
+  <text x="50%" y="55%" font-family="Arial, Helvetica, sans-serif" font-size="48" fill="white" text-anchor="middle" dominant-baseline="middle">X</text>
+</svg>

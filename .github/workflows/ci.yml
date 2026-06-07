@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.11']
     steps:
       - uses: actions/checkout@v4
@@ -23,17 +24,17 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip install pytest responses
+
+      - name: Install Xvfb (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
       - name: Run tests
         run: |
           pytest -q
 
-      - name: Install Xvfb
-        if: runner.os == 'Linux'
+      - name: Run GUI smoke test (headless on Linux / normal on macOS/Windows)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb
-
-      - name: Run GUI smoke test (headless)
-        if: runner.os == 'Linux'
-        run: |
-          xvfb-run -a pytest -q tests/test_gui_smoke.py
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then xvfb-run -a pytest -q tests/test_gui_smoke.py; else pytest -q tests/test_gui_smoke.py; fi
+        shell: bash
