@@ -55,6 +55,28 @@ def main():
         print("Token saved encrypted locally.")
         return
 
+    if args.cmd == "demo":
+        # demo doesn't require a token
+        sample = []
+        for i in range(1, 21):
+            sample.append({'id': f'demo-{i}', 'text': f'Sample demo tweet #{i}', 'created_at': '2026-01-01T00:00:00Z'})
+        db.store_fetched(sample)
+        print('Demo dataset created with 20 sample tweets.')
+        print("Run 'python -m x_delete_all.cli dry-run' to preview, and 'python -m x_delete_all.cli delete' to simulate deletion (will mark as deleted locally). No network calls will be made in demo mode.")
+        return
+
+    # export without token is allowed
+    if args.cmd == "export":
+        entries = db.get_fetched()
+        if not entries:
+            print("No fetched tweets in local archive. Run 'dry-run' first.")
+            return
+        with open('tweets-export.json','w',encoding='utf-8') as f:
+            json.dump(entries, f, ensure_ascii=False, indent=2)
+        print("Exported tweets-export.json")
+        return
+
+    # commands from here require a stored token
     password = input("Enter local password to unlock token: ")
     token = store.load_token(password)
     if not token:
