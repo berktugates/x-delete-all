@@ -1,79 +1,98 @@
-x-delete-all
+x-delete-all — Local bulk-delete tool for X (Twitter)
 
-Purpose
+Summary
 
-A fully-local CLI tool to let a user delete their X (Twitter) posts in bulk from their own machine. The tool stores nothing remotely — all data and tokens remain on the user's device. It supports dry-run, export, resume, and robust rate-limit handling.
+x-delete-all is a privacy-first, fully local tool that helps you safely preview, archive and (optionally) delete your X/Twitter posts. Designed for non-technical users: a guided GUI, a simple CLI, and a demo mode that requires no account or keys.
 
-Quickstart (for non-technical users)
+Key features
 
-1. Install Python 3.11+ from https://python.org if not already installed.
-2. Open a terminal and run:
-   python -m pip install --upgrade pip
-   python -m pip install -r requirements.txt
-3. Recommended (easy) authentication: run the built-in browser auth flow:
-   python -m x_delete_all.cli auth
-   - When prompted, enter your X app Client ID (follow instructions below to create one).
-   - A browser window will open; sign in and authorize the app.
-   - Choose a local password when prompted — the token is encrypted locally.
+- Demo mode: try the entire flow without network or keys (safe, local-only).
+- Dry-run and export: inspect exactly what would be deleted before any irreversible action.
+- Encrypted local tokens: stored under ~/.x-delete-all and protected by a password.
+- Resume support and local archive: interruptions are handled and safe to retry.
+- GUI for beginners and CLI for power users.
 
-   If you already have an OAuth2 token, you can store it manually:
-   python -m x_delete_all.cli init
-   Paste the token when requested.
+Install (one-time)
 
-4. Preview what will be deleted (dry-run):
+1. Install Python 3.11+ from https://python.org.
+2. Open a terminal and run the installer for your OS:
+   macOS / Linux:   ./scripts/install.sh
+   Windows:         scripts\install.bat
+
+Try without any keys (recommended first)
+
+1. Create demo data (no account required):
+   python -m x_delete_all.cli demo
+2. Preview the demo items:
    python -m x_delete_all.cli dry-run
-   Review the sample list and confirm it matches what you expect.
-5. Export a full list (optional):
+3. Export if you like:
    python -m x_delete_all.cli export
-6. Delete (irreversible):
+4. Simulate delete (local only):
    python -m x_delete_all.cli delete
-   You will be asked to type DELETE to confirm.
 
-Creating a developer app (Client ID)
+Everything above runs entirely on your machine and requires no keys.
 
-- Go to the X developer portal / developer.twitter.com and create a new app/project.
-- Under OAuth2 settings, add a redirect URI: http://127.0.0.1:8080/callback
-- Copy the Client ID value and use it when running `python -m x_delete_all.cli auth`.
+Using the real app with your account
 
-Notes
+To delete actual tweets you must authenticate with X. Two options exist:
 
-- The tool stores tokens and fetched tweet lists in ~/.x-delete-all; nothing is uploaded.
-- Keep your local password safe; losing it means you cannot decrypt stored tokens.
+A) Browser-assisted OAuth (recommended):
+   python -m x_delete_all.cli auth
+   - Follow the prompts. A browser window will open; complete the authorization.
+   - Choose a local password to protect the token.
 
-Packaging and easy installers (for non-technical users)
+B) Manual token (only if you already have one):
+   python -m x_delete_all.cli init
+   - Paste the OAuth2 token when prompted.
 
-Option A — Prebuilt standalone executables (recommended for non-technical users):
-- On each platform (Windows/macOS/Linux) a single executable can be built with PyInstaller.
-- To build locally (developer/machine-specific):
-  1. Install dependencies: scripts/install.sh (macOS/Linux) or scripts/install.bat (Windows).
-  2. Build a standalone binary: scripts/build_pyinstaller.sh (or build_windows_exe.bat on Windows).
-  3. Find the single executable in ./dist/ — distribute that file to users. They can double-click it.
+After authentication:
 
-Option B — Install via Python wheel (technical users):
-- Build wheel: scripts/build_wheel.sh
-- Install: python3 -m pip install dist/x_delete_all-0.1.0-py3-none-any.whl
-- Or: upload to PyPI and users can pip install x-delete-all
+1. Preview what will be deleted (required):
+   python -m x_delete_all.cli dry-run
+   This saves a local archive used by export and delete.
+2. (Optional) Export the full list:
+   python -m x_delete_all.cli export
+3. Delete (irreversible):
+   python -m x_delete_all.cli delete
+   You must type DELETE to confirm — the action is immediate.
 
-Notes on cross-platform builds
-- PyInstaller produces native executables only for the platform it runs on. To produce macOS binaries, run build on macOS; Windows EXE must be built on Windows.
-- For polished installers (DMG/PKG for macOS, MSI for Windows, DEB/RPM/AppImage for Linux) use native packaging tools or Briefcase (https://briefcase.beeware.org/) for a more complete native app.
+GUI (absolute beginners)
 
-Release automation
+To run the GUI locally:
+- Double-click a distributed standalone binary (recommended for non-technical users), or run:
+  python -c "import x_delete_all.gui as g; g.App().mainloop()"
 
-This repo includes a GitHub Actions workflow that builds wheels and standalone executables on tag pushes (v*). The workflow uploads artifacts for each OS and creates a GitHub Release automatically. To create a release locally, tag a commit like:
+Testing and verification (run locally)
 
-  git tag v0.1.0 && git push origin v0.1.0
+Run the automated tests to verify your environment and that local flows work:
 
-License
+1. Install dependencies (if not done already): ./scripts/install.sh
+2. Run tests: pytest -q
 
-The project supports an optional offline license file for premium features. The app verifies a signed JSON license using an embedded public key. Maintainers must sign license files using the private key and provide them to users; the public key is embedded in x_delete_all/license.py.
+All core tests are included (storage, DB and API mocks). The demo flow exercises the complete UI/CLI experience without requiring API access.
 
+Packaging and installers
 
-Security & privacy
+- Prebuilt single-file executables: scripts/build_pyinstaller.sh (build on target OS).
+- Native installers and polished apps: briefcase (scripts/build_briefcase.sh) — requires per-OS build host.
+- Wheels: scripts/build_wheel.sh
 
-- Tokens encrypted locally with a password-derived key. No data leaves the machine by default.
-- The tool warns before irreversible deletes.
+Security, privacy and safety
 
-Support
+- Tokens are encrypted locally using a password-derived key in ~/.x-delete-all.
+- No data is uploaded by default. Exports are local JSON files you may share at your discretion.
+- Deleting posts is irreversible. Always run dry-run and export before delete.
 
-Open issues in this repository if you need help.
+Support & contact
+
+- Run pytest -q to confirm everything works on your machine.
+- Open an issue in this repo for help or to report a bug.
+
+Notes for maintainers
+
+- Demo mode provides a frictionless path for non-technical users to validate the UX without keys.
+- The project is intentionally free and local-first; optional license tooling exists but is disabled for free distribution.
+
+Credits
+
+Created by the x-delete-all maintainers. Contributions welcome — see CONTRIBUTING.md (if present).
