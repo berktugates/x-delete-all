@@ -76,6 +76,19 @@ def main():
         print("Exported tweets-export.json")
         return
 
+    # Special-case: allow 'delete' to operate on demo data without a token
+    if args.cmd == "delete":
+        entries = db.get_fetched()
+        if entries and all(str(e.get('id','')).startswith('demo-') for e in entries):
+            # perform local-only delete marking
+            for t in entries:
+                if db.is_deleted(t['id']):
+                    continue
+                db.mark_deleted(t['id'])
+                print(f"Locally marked deleted: {t['id']}")
+            print('Demo delete complete (local only).')
+            return
+
     # commands from here require a stored token
     password = input("Enter local password to unlock token: ")
     token = store.load_token(password)
