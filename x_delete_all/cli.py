@@ -21,6 +21,8 @@ def main():
     sub.add_parser("delete", help="Perform deletion of tweets")
     sub.add_parser("resume", help="Resume a previously interrupted delete run")
     sub.add_parser("demo", help="Run a fully-local demo (no network) to try the UI and flows")
+    wipe = sub.add_parser("wipe", help="Fetch all tweets and delete them (safe defaults)")
+    wipe.add_argument("--yes", action="store_true", help="Skip interactive confirmation and proceed")
 
     args = parser.parse_args()
     if not args.cmd:
@@ -95,6 +97,41 @@ def main():
         with open('tweets-export.json','w',encoding='utf-8') as f:
             json.dump(entries, f, ensure_ascii=False, indent=2)
         print("Exported tweets-export.json")
+        return
+
+    if args.cmd == "wipe":
+        # One-command flow: fetch all tweets (fresh) then delete them. Always write an export backup.
+        yes = getattr(args, 'yes', False)
+        user_id = api.get_user_id()
+        print('Fetching tweets (this may take a while) ...')
+        tweets = list(api.list_tweets(user_id, max_results=100000))
+        if not tweets:
+            print('No tweets found.')
+            return
+        print(f'Fetched {len(tweets)} tweets. Writing local backup to tweets-export.json')
+        with open('tweets-export.json','w',encoding='utf-8') as f:
+            json.dump(tweets, f, ensure_ascii=False, indent=2)
+        db.store_fetched(tweets)
+        if not yes:
+            confirm = input("DELETING IS IRREVERSIBLE. Type 'DELETE' to confirm: ")
+            if confirm != 'DELETE':
+                print('Aborted.')
+                return
+        else:
+            print('Proceeding without interactive confirmation (--yes)')
+        # perform deletes
+        failures = 0
+        for t in tweets:
+            if db.is_deleted(t['id']):
+                continue
+            ok = api.delete_tweet(t['id'])
+            if ok:
+                db.mark_deleted(t['id'])
+                print(f'Deleted: {t['id']}')
+            else:
+                failures += 1
+                print(f'Failed to delete: {t['id']}')
+        print('Done. Failures:', failures)
         return
 
     if args.cmd == "delete":
