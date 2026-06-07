@@ -11,17 +11,27 @@ import base64
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
-# Replace with the real public key (PEM) used to sign licenses
+# PUBLIC_KEY_PEM may be replaced by maintainers to enable offline license verification.
+# For free/public distribution, license verification is optional and this module will allow operation.
 PUBLIC_KEY_PEM = b"""
 -----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwW...REPLACE_WITH_REAL_KEY...
+REPLACE_WITH_REAL_KEY
 -----END PUBLIC KEY-----
 """
 
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
+
 def verify_license(path):
+    """Verify a signed license JSON at `path`.
+
+    Returns (True, 'OK') when license is valid, (False, 'reason') when invalid.
+    If PUBLIC_KEY_PEM is unset (placeholder), verification is skipped and returns (True,'free').
+    """
     try:
+        if b'REPLACE_WITH_REAL_KEY' in PUBLIC_KEY_PEM:
+            # no license enforcement for free distribution
+            return True, 'free'
         with open(path,'rb') as f:
             j = json.load(f)
         sig_b64 = j.get('sig')
