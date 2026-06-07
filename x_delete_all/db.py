@@ -15,6 +15,17 @@ class ArchiveDB:
         self.conn = sqlite3.connect(self.db_file)
         self._init()
 
+    def mark_multiple_deleted(self, ids):
+        cur = self.conn.cursor()
+        cur.executemany("INSERT OR REPLACE INTO deleted (id, deleted_at) VALUES (?,strftime('%s','now'))", ((i,) for i in ids))
+        self.conn.commit()
+
+    def pending_count(self):
+        cur = self.conn.cursor()
+        cur.execute('SELECT COUNT(*) FROM fetched WHERE id NOT IN (SELECT id FROM deleted)')
+        r = cur.fetchone()
+        return r[0] if r else 0
+
     def _init(self):
         cur = self.conn.cursor()
         cur.execute('''CREATE TABLE IF NOT EXISTS fetched (id TEXT PRIMARY KEY, data TEXT)''')
