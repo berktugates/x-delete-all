@@ -1,0 +1,14 @@
+[project]
+name = "x-delete-all"
+version = "0.1.0"
+description = "Local CLI to bulk-delete a user's X/Twitter posts"
+readme = "README.md"
+authors = ["Staff Engineer <staff@example.com>"]
+requires-python = ">=3.11"
+
+[project.scripts]
+x-delete-all = "x_delete_all.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

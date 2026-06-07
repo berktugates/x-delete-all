@@ -1,0 +1,127 @@
+"""Simple CLI for x-delete-all"""
+import argparse
+import sys
+import webbrowser
+import os
+from .storage import TokenStore
+from .xapi import XAPI
+from .db import ArchiveDB
+from .auth import AuthManager
+import json
+
+def main():
+    parser = argparse.ArgumentParser(prog="x-delete-all", description="Local bulk-delete tool for X/Twitter posts")
+    sub = parser.add_subparsers(dest="cmd")
+
+    sub.add_parser("init", help="Initialize local token storage (manual)")
+    sub.add_parser("auth", help="Authenticate via OAuth PKCE (recommended)")
+    sub.add_parser("fetch", help="Fetch tweets (list)")
+    sub.add_parser("dry-run", help="List tweets that WOULD be deleted (no deletes)")
+    sub.add_parser("export", help="Export fetched tweets to JSON")
+    sub.add_parser("delete", help="Perform deletion of tweets")
+    sub.add_parser("resume", help="Resume a previously interrupted delete run")
+
+    args = parser.parse_args()
+    if not args.cmd:
+        parser.print_help()
+        return
+
+    store = TokenStore()
+    db = ArchiveDB()
+
+    if args.cmd == "init":
+        password = input("Choose a local password (used to encrypt token): ")
+        token = input("Paste your X OAuth2 user token (starts with 'Bearer ' or OAuth2 token): ")
+        store.save_token(token.strip(), password)
+        print("Token saved encrypted locally.")
+        return
+
+    if args.cmd == "auth":
+        client_id = input("Enter your X app Client ID (create one at developer portal if needed): ").strip()
+        port_in = input("Local callback port [8080]: ").strip()
+        port = int(port_in) if port_in else 8080
+        auth = AuthManager(client_id=client_id, redirect_port=port)
+        token = auth.authenticate()
+        if not token:
+            print("Authentication failed.")
+            return
+        # attach client_id so we can refresh later if needed
+        token['client_id'] = client_id
+        password = input("Choose a local password (used to encrypt token): ")
+        store.save_token(token, password)
+        print("Token saved encrypted locally.")
+        return
+
+    password = input("Enter local password to unlock token: ")
+    token = store.load_token(password)
+    if not token:
+        print("Failed to load token. Run 'init' or 'auth' to store it first.")
+        return
+
+    api = XAPI(token)
+
+    if args.cmd == "fetch":
+        user_id = api.get_user_id()
+        tweets = list(api.list_tweets(user_id))
+        print(json.dumps(tweets, indent=2))
+        return
+
+    if args.cmd == "dry-run":
+        user_id = api.get_user_id()
+        tweets = list(api.list_tweets(user_id))
+        print(f"{len(tweets)} tweets found.\nSample: \n")
+        for t in tweets[:10]:
+            print(f"- [{t['id']}] {t.get('text')[:120]}")
+        print("\nRun 'export' to save full list or 'delete' to proceed.")
+        db.store_fetched(tweets)
+        return
+
+    if args.cmd == "export":
+        entries = db.get_fetched()
+        if not entries:
+            print("No fetched tweets in local archive. Run 'dry-run' first.")
+            return
+        with open('tweets-export.json','w',encoding='utf-8') as f:
+            json.dump(entries, f, ensure_ascii=False, indent=2)
+        print("Exported tweets-export.json")
+        return
+
+    if args.cmd == "delete":
+        confirm = input("DELETING IS IRREVERSIBLE. Type 'DELETE' to confirm: ")
+        if confirm != 'DELETE':
+            print("Aborted.")
+            return
+        user_id = api.get_user_id()
+        tweets = db.get_fetched()
+        if not tweets:
+            print("No fetched tweets found locally. Run 'dry-run' first.")
+            return
+        for t in tweets:
+            if db.is_deleted(t['id']):
+                continue
+            ok = api.delete_tweet(t['id'])
+            if ok:
+                db.mark_deleted(t['id'])
+                print(f"Deleted: {t['id']}")
+            else:
+                print(f"Failed to delete: {t['id']}")
+        print("Done.")
+        return
+
+    if args.cmd == "resume":
+        # resume uses archived list
+        tweets = db.get_fetched()
+        for t in tweets:
+            if db.is_deleted(t['id']):
+                continue
+            ok = api.delete_tweet(t['id'])
+            if ok:
+                db.mark_deleted(t['id'])
+                print(f"Deleted: {t['id']}")
+            else:
+                print(f"Failed to delete: {t['id']}")
+        print("Resume complete.")
+        return
+
+if __name__ == '__main__':
+    main()
