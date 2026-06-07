@@ -58,7 +58,16 @@ Notes on cross-platform builds
 - PyInstaller produces native executables only for the platform it runs on. To produce macOS binaries, run build on macOS; Windows EXE must be built on Windows.
 - For polished installers (DMG/PKG for macOS, MSI for Windows, DEB/RPM/AppImage for Linux) use native packaging tools or Briefcase (https://briefcase.beeware.org/) for a more complete native app.
 
-If you want, create release artifacts next (GitHub Releases + prebuilt binaries) and I will add release automation.
+Release automation
+
+This repo includes a GitHub Actions workflow that builds wheels and standalone executables on tag pushes (v*). The workflow uploads artifacts for each OS and creates a GitHub Release automatically. To create a release locally, tag a commit like:
+
+  git tag v0.1.0 && git push origin v0.1.0
+
+License
+
+The project supports an optional offline license file for premium features. The app verifies a signed JSON license using an embedded public key. Maintainers must sign license files using the private key and provide them to users; the public key is embedded in x_delete_all/license.py.
+
 
 Security & privacy
 
