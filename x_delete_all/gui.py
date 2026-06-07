@@ -158,6 +158,25 @@ class App(tk.Tk):
         messagebox.showinfo('Exported', f'Exported {len(items)} tweets to {path}')
 
     def on_delete(self):
+        # Allow local-only delete for demo data when no token is loaded
+        tweets = self.db.get_fetched()
+        if not tweets:
+            messagebox.showwarning('No data', 'Run Dry-run first to fetch tweets (or use Demo).')
+            return
+        if not self.token and all(str(t.get('id','')).startswith('demo-') for t in tweets):
+            if not messagebox.askyesno('Confirm', 'This will permanently mark ALL demo tweets as deleted in local archive. Continue?'):
+            return
+            deleted = 0
+            for t in tweets:
+            if self.db.is_deleted(t['id']):
+                continue
+            self.db.mark_deleted(t['id'])
+            deleted += 1
+            self.set_status(f'Local demo delete complete: {deleted}/{len(tweets)}')
+            messagebox.showinfo('Done', f'Local demo delete complete: {deleted}/{len(tweets)}')
+            return
+
+        # otherwise require token
         if not messagebox.askyesno('Confirm', 'This will permanently delete ALL fetched tweets from your account. Continue?'):
             return
         pwd = tk.simpledialog.askstring('Password', 'Enter local password to unlock token:')

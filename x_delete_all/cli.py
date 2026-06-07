@@ -76,6 +76,16 @@ def main():
         print("Exported tweets-export.json")
         return
 
+    # Special-case: allow 'dry-run' to show local fetched/demo entries without token
+    if args.cmd == "dry-run":
+        entries = db.get_fetched()
+        if entries:
+            print(f"{len(entries)} tweets found in local archive. Sample:\n")
+            for t in entries[:10]:
+                print(f"- [{t['id']}] {t.get('text')[:120]}")
+            print("\nRun 'export' to save full list or 'delete' to proceed (delete may require authentication for real tweets).")
+            return
+
     # Special-case: allow 'delete' to operate on demo data without a token
     if args.cmd == "delete":
         entries = db.get_fetched()
