@@ -29,44 +29,67 @@ class App(tk.Tk):
         self.after(200, self.show_onboarding_if_first_run)
 
     def create_widgets(self):
-        frm = tk.Frame(self)
-        frm.pack(fill=tk.X, padx=10, pady=8)
-        tk.Label(frm, text='Step 1 — Authenticate').pack(anchor='w')
-        auth_frame = tk.Frame(self)
-        auth_frame.pack(fill=tk.X, padx=10)
-        tk.Button(auth_frame, text='Authenticate (browser)', command=self.on_auth).pack(side=tk.LEFT)
-        tk.Button(auth_frame, text='Paste token manually', command=self.on_paste_token).pack(side=tk.LEFT, padx=6)
-        tk.Button(auth_frame, text='Load token', command=self.on_load_token).pack(side=tk.LEFT, padx=6)
-        tk.Button(auth_frame, text='What do I need?', command=self.on_explain).pack(side=tk.LEFT, padx=6)
+        # Use ttk for a more modern, consistent look and improved accessibility
+        style = ttk.Style(self)
+        try:
+            style.theme_use('clam')
+        except Exception:
+            pass
+        style.configure('Header.TLabel', font=('Segoe UI', 11, 'bold'))
+        style.configure('Info.TLabel', font=('Segoe UI', 9))
+        style.configure('TButton', padding=6)
 
-        tk.Label(self, text='Step 2 — Preview & Export').pack(anchor='w', padx=10, pady=(10,0))
-        preview_frame = tk.Frame(self)
-        preview_frame.pack(fill=tk.BOTH, expand=True, padx=10)
-        self.preview = scrolledtext.ScrolledText(preview_frame)
+        top = ttk.Frame(self, padding=(12,10))
+        top.pack(fill=tk.X)
+
+        # Step 1 — Authentication
+        ttk.Label(top, text='Step 1 — Authenticate', style='Header.TLabel').pack(anchor='w')
+        auth_frame = ttk.Frame(top)
+        auth_frame.pack(fill=tk.X, pady=(6,4))
+        ttk.Button(auth_frame, text='Authenticate (browser)', command=self.on_auth).pack(side=tk.LEFT)
+        ttk.Button(auth_frame, text='Paste token manually', command=self.on_paste_token).pack(side=tk.LEFT, padx=8)
+        ttk.Button(auth_frame, text='Load token', command=self.on_load_token).pack(side=tk.LEFT, padx=8)
+        ttk.Button(auth_frame, text='What do I need?', command=self.on_explain).pack(side=tk.LEFT, padx=8)
+        ttk.Label(top, text='Tip: For a quick trial use Demo mode (no account). For real deletions you must provide an X app Client ID, then choose a local password to encrypt the token.', style='Info.TLabel', wraplength=740).pack(anchor='w', pady=(6,0))
+
+        # Step 2 — Preview & Export
+        ttk.Label(self, text='Step 2 — Preview & Export', style='Header.TLabel').pack(anchor='w', padx=12, pady=(12,0))
+        preview_frame = ttk.Frame(self)
+        preview_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=(6,0))
+        self.preview = scrolledtext.ScrolledText(preview_frame, height=18, wrap=tk.WORD)
         self.preview.pack(fill=tk.BOTH, expand=True)
-        pbtns = tk.Frame(self)
-        pbtns.pack(fill=tk.X, padx=10, pady=6)
-        tk.Button(pbtns, text='Dry-run (fetch)', command=self.on_dry_run).pack(side=tk.LEFT)
-        tk.Button(pbtns, text='Export JSON', command=self.on_export).pack(side=tk.LEFT, padx=6)
-        tk.Button(pbtns, text='Fetch & Select All', command=self.on_dry_run).pack(side=tk.LEFT, padx=6)
-        tk.Button(pbtns, text='Open backup folder', command=self.open_backup_folder).pack(side=tk.LEFT, padx=6)
 
-        # Progress bar
+        pbtns = ttk.Frame(self)
+        pbtns.pack(fill=tk.X, padx=12, pady=8)
+        ttk.Button(pbtns, text='Dry-run (fetch)', command=self.on_dry_run).pack(side=tk.LEFT)
+        ttk.Button(pbtns, text='Export JSON', command=self.on_export).pack(side=tk.LEFT, padx=8)
+        ttk.Button(pbtns, text='Fetch & Select All', command=self.on_dry_run).pack(side=tk.LEFT, padx=8)
+        ttk.Button(pbtns, text='Open backup folder', command=self.open_backup_folder).pack(side=tk.LEFT, padx=8)
+
+        # Progress bar (determinate) for delete/wipe operations
         self.progress = ttk.Progressbar(self, orient='horizontal', mode='determinate')
-        self.progress.pack(fill=tk.X, padx=10, pady=(6,0))
+        self.progress.pack(fill=tk.X, padx=12, pady=(0,8))
 
-        tk.Label(self, text='Step 3 — Delete (irreversible)').pack(anchor='w', padx=10, pady=(10,0))
-        dbtns = tk.Frame(self)
-        dbtns.pack(fill=tk.X, padx=10, pady=6)
-        tk.Button(dbtns, text='Delete all fetched tweets', command=self.on_delete).pack(side=tk.LEFT)
-        tk.Button(dbtns, text='Wipe account (fetch+delete)', command=self.on_wipe).pack(side=tk.LEFT, padx=6)
-        tk.Button(dbtns, text='Resume delete', command=self.on_resume).pack(side=tk.LEFT, padx=6)
+        # Step 3 — Delete
+        ttk.Label(self, text='Step 3 — Delete (irreversible)', style='Header.TLabel').pack(anchor='w', padx=12, pady=(6,0))
+        dbtns = ttk.Frame(self)
+        dbtns.pack(fill=tk.X, padx=12, pady=8)
+        ttk.Button(dbtns, text='Delete all fetched tweets', command=self.on_delete).pack(side=tk.LEFT)
+        ttk.Button(dbtns, text='Wipe account (fetch+delete)', command=self.on_wipe).pack(side=tk.LEFT, padx=8)
+        ttk.Button(dbtns, text='Resume delete', command=self.on_resume).pack(side=tk.LEFT, padx=8)
 
-        status_frame = tk.Frame(self)
-        status_frame.pack(fill=tk.X, padx=10, pady=(6,10))
-        tk.Label(status_frame, text='Status:').pack(side=tk.LEFT)
+        # Status bar
+        status_frame = ttk.Frame(self)
+        status_frame.pack(fill=tk.X, padx=12, pady=(6,12))
+        ttk.Label(status_frame, text='Status:', width=8).pack(side=tk.LEFT)
         self.status_var = tk.StringVar(value='Idle')
-        tk.Label(status_frame, textvariable=self.status_var).pack(side=tk.LEFT)
+        ttk.Label(status_frame, textvariable=self.status_var).pack(side=tk.LEFT)
+
+        # Footer quick actions
+        footer = ttk.Frame(self)
+        footer.pack(fill=tk.X, padx=12, pady=(0,12))
+        ttk.Button(footer, text='Try demo (no account)', command=self.on_demo_click).pack(side=tk.RIGHT)
+        ttk.Button(footer, text='Open README', command=self.open_help).pack(side=tk.RIGHT, padx=8)
 
     def set_token_and_save(self, token_dict):
         # token_dict can be raw string or dict
