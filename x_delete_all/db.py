@@ -5,12 +5,14 @@ import json
 
 HOME = os.path.expanduser('~')
 DB_DIR = os.path.join(HOME, '.x-delete-all')
-DB_FILE = os.path.join(DB_DIR, 'archive.sqlite')
 
 class ArchiveDB:
     def __init__(self):
         os.makedirs(DB_DIR, exist_ok=True)
-        self.conn = sqlite3.connect(DB_FILE)
+        self.db_file = os.path.join(DB_DIR, 'archive.sqlite')
+        # ensure directory exists
+        os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
+        self.conn = sqlite3.connect(self.db_file)
         self._init()
 
     def _init(self):

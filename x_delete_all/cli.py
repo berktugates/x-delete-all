@@ -20,6 +20,7 @@ def main():
     sub.add_parser("export", help="Export fetched tweets to JSON")
     sub.add_parser("delete", help="Perform deletion of tweets")
     sub.add_parser("resume", help="Resume a previously interrupted delete run")
+    sub.add_parser("demo", help="Run a fully-local demo (no network) to try the UI and flows")
 
     args = parser.parse_args()
     if not args.cmd:
@@ -74,6 +75,16 @@ def main():
             print(f"- [{t['id']}] {t.get('text')[:120]}")
         print("\nRun 'export' to save full list or 'delete' to proceed.")
         db.store_fetched(tweets)
+        return
+
+    if args.cmd == "demo":
+        # Create a fully-local demo dataset so non-technical users can try everything without tokens
+        sample = []
+        for i in range(1, 21):
+            sample.append({'id': f'demo-{i}', 'text': f'Sample demo tweet #{i}', 'created_at': '2026-01-01T00:00:00Z'})
+        db.store_fetched(sample)
+        print('Demo dataset created with 20 sample tweets.')
+        print("Run 'python -m x_delete_all.cli dry-run' to preview, and 'python -m x_delete_all.cli delete' to simulate deletion (will mark as deleted locally). No network calls will be made in demo mode.")
         return
 
     if args.cmd == "export":

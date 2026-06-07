@@ -3,7 +3,7 @@ name = "x-delete-all"
 version = "0.1.0"
 description = "Local CLI to bulk-delete a user's X/Twitter posts"
 readme = "README.md"
-authors = ["Staff Engineer <staff@example.com>"]
+authors = [ { name = "Staff Engineer", email = "staff@example.com" } ]
 requires-python = ">=3.11"
 
 [project.scripts]

@@ -9,12 +9,15 @@ import base64
 
 HOME = os.path.expanduser('~')
 BASE_DIR = os.path.join(HOME, '.x-delete-all')
-TOKEN_FILE = os.path.join(BASE_DIR, 'token.json.enc')
-SALT_FILE = os.path.join(BASE_DIR, 'salt.bin')
 
 class TokenStore:
     def __init__(self):
         os.makedirs(BASE_DIR, exist_ok=True)
+
+    def _token_paths(self):
+        token_file = os.path.join(BASE_DIR, 'token.json.enc')
+        salt_file = os.path.join(BASE_DIR, 'salt.bin')
+        return token_file, salt_file
 
     def _derive(self, password, salt):
         kdf = PBKDF2HMAC(
@@ -38,19 +41,23 @@ class TokenStore:
         f = Fernet(key)
         token_b = json.dumps(token_data).encode('utf-8')
         enc = f.encrypt(token_b)
-        with open(TOKEN_FILE, 'wb') as fh:
+        token_file, salt_file = self._token_paths()
+        # ensure dir exists
+        os.makedirs(os.path.dirname(token_file), exist_ok=True)
+        with open(token_file, 'wb') as fh:
             fh.write(enc)
-        with open(SALT_FILE, 'wb') as fh:
+        with open(salt_file, 'wb') as fh:
             fh.write(salt)
 
     def load_token(self, password):
         """Return token dict or None on failure."""
         try:
-            with open(SALT_FILE, 'rb') as fh:
+            token_file, salt_file = self._token_paths()
+            with open(salt_file, 'rb') as fh:
                 salt = fh.read()
             key = self._derive(password, salt)
             f = Fernet(key)
-            with open(TOKEN_FILE, 'rb') as fh:
+            with open(token_file, 'rb') as fh:
                 enc = fh.read()
             dec = f.decrypt(enc)
             return json.loads(dec.decode('utf-8'))
