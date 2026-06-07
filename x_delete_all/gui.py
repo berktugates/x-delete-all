@@ -1,22 +1,32 @@
-"""Simple Tkinter GUI for non-technical users"""
+"""Simple Tkinter GUI for non-technical users with onboarding, progress and helpers"""
 import tkinter as tk
-from tkinter import messagebox, scrolledtext, filedialog
+from tkinter import messagebox, scrolledtext, filedialog, ttk
 from .storage import TokenStore
 from .auth import AuthManager
 from .xapi import XAPI
 from .db import ArchiveDB
 import threading
 import json
+import os
+import logging
+import subprocess
+
+LOG_DIR = os.path.join(os.path.expanduser('~'), '.x-delete-all', 'logs')
+os.makedirs(LOG_DIR, exist_ok=True)
+LOGFILE = os.path.join(LOG_DIR, 'gui.log')
+logging.basicConfig(filename=LOGFILE, level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
+logger = logging.getLogger('x-delete-all.gui')
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title('x-delete-all — GUI')
-        self.geometry('700x500')
+        self.geometry('780x560')
         self.store = TokenStore()
         self.db = ArchiveDB()
         self.token = None
         self.create_widgets()
+        self.after(200, self.show_onboarding_if_first_run)
 
     def create_widgets(self):
         frm = tk.Frame(self)
@@ -39,6 +49,11 @@ class App(tk.Tk):
         tk.Button(pbtns, text='Dry-run (fetch)', command=self.on_dry_run).pack(side=tk.LEFT)
         tk.Button(pbtns, text='Export JSON', command=self.on_export).pack(side=tk.LEFT, padx=6)
         tk.Button(pbtns, text='Fetch & Select All', command=self.on_dry_run).pack(side=tk.LEFT, padx=6)
+        tk.Button(pbtns, text='Open backup folder', command=self.open_backup_folder).pack(side=tk.LEFT, padx=6)
+
+        # Progress bar
+        self.progress = ttk.Progressbar(self, orient='horizontal', mode='determinate')
+        self.progress.pack(fill=tk.X, padx=10, pady=(6,0))
 
         tk.Label(self, text='Step 3 — Delete (irreversible)').pack(anchor='w', padx=10, pady=(10,0))
         dbtns = tk.Frame(self)
@@ -56,6 +71,60 @@ class App(tk.Tk):
     def set_token_and_save(self, token_dict):
         # token_dict can be raw string or dict
         self.token = token_dict
+
+    def show_onboarding_if_first_run(self):
+        # simple first-run check: if no fetched or token exists, show onboarding
+        fetched = self.db.get_fetched()
+        token_file = os.path.join(os.path.expanduser('~'), '.x-delete-all', 'token.json.enc')
+        if not fetched and not os.path.exists(token_file):
+            self.show_onboarding()
+
+    def show_onboarding(self):
+        win = tk.Toplevel(self)
+        win.title('Welcome to x-delete-all')
+        win.geometry('520x280')
+        tk.Label(win, text='Welcome — safely delete your posts', font=('TkDefaultFont', 14, 'bold')).pack(pady=(12,6))
+        tk.Label(win, text='Try demo (no account) or connect your X account to delete your tweets.', wraplength=480).pack(pady=(0,12))
+        btns = tk.Frame(win)
+        btns.pack(pady=8)
+        tk.Button(btns, text='Try demo — no account needed', width=20, command=lambda:[win.destroy(), self.on_demo_click()]).pack(side=tk.LEFT, padx=8)
+        tk.Button(btns, text='Use my account', width=20, command=lambda:[win.destroy(), self.on_auth()]).pack(side=tk.LEFT, padx=8)
+        tk.Button(win, text='Read brief guide', command=lambda: self.open_help()).pack(pady=8)
+
+    def open_help(self):
+        # open README or bundled help
+        readme = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'README.md'))
+        try:
+            if os.name == 'nt':
+                os.startfile(readme)
+            elif sys.platform == 'darwin':
+                subprocess.run(['open', readme])
+            else:
+                subprocess.run(['xdg-open', readme])
+        except Exception as e:
+            messagebox.showinfo('Help', f'Open README at: {readme}')
+
+    def open_backup_folder(self):
+        folder = os.path.join(os.path.expanduser('~'), '.x-delete-all', 'backups')
+        os.makedirs(folder, exist_ok=True)
+        try:
+            if os.name == 'nt':
+                os.startfile(folder)
+            elif sys.platform == 'darwin':
+                subprocess.run(['open', folder])
+            else:
+                subprocess.run(['xdg-open', folder])
+        except Exception:
+            messagebox.showinfo('Backup folder', f'Backups are at: {folder}')
+
+    def on_demo_click(self):
+        demo = [{'id': f'demo-{i}', 'text': f'Demo tweet {i}'} for i in range(1, 51)]
+        self.db.store_fetched(demo)
+        self.preview.delete('1.0', tk.END)
+        self.preview.insert(tk.END, f"Loaded {len(demo)} demo tweets.\n\n")
+        for t in demo[:200]:
+            self.preview.insert(tk.END, f"[{t['id']}] {t['text']}\n\n")
+        self.set_status('Demo data loaded')
 
     def on_auth(self):
         client_id = tk.simpledialog.askstring('Client ID', 'Enter your X app Client ID (create an app in developer portal):')
@@ -210,6 +279,29 @@ class App(tk.Tk):
         # fetch + export + delete flow from GUI with strong confirmation
         if not messagebox.askyesno('Confirm wipe', 'This will fetch ALL tweets, write a local backup, and DELETE them. Continue?'):
             return
+        # If demo data loaded (no token), allow local-only wipe
+        tweets = self.db.get_fetched()
+        if tweets and not self.token and all(str(t.get('id','')).startswith('demo-') for t in tweets):
+            if not messagebox.askyesno('Confirm local wipe', 'This will mark all demo tweets as deleted in local archive. Continue?'):
+                return
+            total = len(tweets)
+            self.progress['maximum'] = total
+            self.progress['value'] = 0
+            deleted = 0
+            for t in tweets:
+                if self.db.is_deleted(t['id']):
+                    self.progress['value'] += 1
+                    continue
+                self.db.mark_deleted(t['id'])
+                deleted += 1
+                self.progress['value'] += 1
+                self.set_status(f'Local demo deleted {deleted}/{total}')
+                self.update_idletasks()
+            messagebox.showinfo('Done', f'Local demo wipe complete: {deleted}/{total} marked deleted')
+            self.set_status('Local demo wipe complete')
+            self.progress['value'] = 0
+            return
+
         pwd = tk.simpledialog.askstring('Password', 'Enter local password to unlock token:')
         if not pwd:
             return
@@ -223,10 +315,17 @@ class App(tk.Tk):
                 self.set_status('Fetching tweets...')
                 uid = api.get_user_id()
                 tweets = list(api.list_tweets(uid, max_results=100000))
-                with open('tweets-export.json','w',encoding='utf-8') as f:
+
+                # write backup to backups directory with timestamp
+                bdir = os.path.join(os.path.expanduser('~'), '.x-delete-all', 'backups')
+                os.makedirs(bdir, exist_ok=True)
+                fname = os.path.join(bdir, f'tweets-export-{int(threading.get_ident())}-{len(tweets)}.json')
+                with open(fname,'w',encoding='utf-8') as f:
                     json.dump(tweets, f, ensure_ascii=False, indent=2)
+
                 self.db.store_fetched(tweets)
-                self.set_status(f'Fetched {len(tweets)} tweets; awaiting final confirmation')
+                total = len(tweets)
+                self.set_status(f'Fetched {total} tweets; awaiting final confirmation')
                 confirm = tk.simpledialog.askstring('Final confirmation', "Type DELETE to permanently delete all fetched tweets:")
                 if confirm != 'DELETE':
                     self.set_status('Wipe aborted')
@@ -234,16 +333,25 @@ class App(tk.Tk):
                     return
                 self.set_status('Deleting tweets...')
                 failed = 0
+                self.progress['maximum'] = total
+                self.progress['value'] = 0
+                deleted = 0
                 for t in tweets:
                     if self.db.is_deleted(t['id']):
+                        self.progress['value'] += 1
                         continue
                     ok = api.delete_tweet(t['id'])
                     if ok:
                         self.db.mark_deleted(t['id'])
+                        deleted += 1
                     else:
                         failed += 1
-                self.set_status(f'Wipe complete. Failures: {failed}')
-                messagebox.showinfo('Done', f'Wipe complete. Failures: {failed}')
+                    self.progress['value'] += 1
+                    self.set_status(f'Deleted {deleted}/{total} (failed {failed})')
+                    self.update_idletasks()
+                self.set_status(f'Wipe complete. Deleted: {deleted}. Failures: {failed}. Backup: {fname}')
+                messagebox.showinfo('Done', f'Wipe complete. Deleted: {deleted}. Failures: {failed}. Backup: {fname}')
+                self.progress['value'] = 0
             except Exception as e:
                 self.set_status('Error during wipe')
                 messagebox.showerror('Error', str(e))
